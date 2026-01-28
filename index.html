@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>3Dulko Viewer</title>
+  <title>Cesium 3D Model Viewer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <!-- ✅ CesiumJS CSS (proper <link> tag) -->
-  <link rel="stylesheet" href="https://unpkg.com/cesium/Build/Cesium/Widgets/widgets.css">
+  <link rel="stylesheet"
+        href="https://unpkg.com/cesium/Build/Cesium/Widgets/widgets.css" />
 
   <style>
     html, body, #cesiumContainer {
@@ -47,7 +48,7 @@
   <div class="info">Left-click: rotate • Right-click: tilt • Scroll: zoom</div>
   <div id="errorBox"></div>
 
-  <!-- ✅ CesiumJS (proper <script src> tag; non-module) -->
+  <!-- ✅ CesiumJS (proper <script src> tag; global `Cesium`) -->
   <script src="https://unpkg.com/cesium/Build/Cesium/Cesium.js"></script>
 
   <script>
@@ -63,8 +64,8 @@
 
     // Create the viewer
     const viewer = new Cesium.Viewer("cesiumContainer", {
-      terrain: Cesium.Terrain.fromWorldTerrain(),                        // uses ion
-      imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),    // Bing Aerial via ion
+      terrain: Cesium.Terrain.fromWorldTerrain(),                        // ion
+      imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),    // Bing via ion
       timeline: false,
       animation: false,
       baseLayerPicker: true,
@@ -78,13 +79,11 @@
     viewer.scene.highDynamicRange = true;
     viewer.shadows = false;
 
-    // 👉 Build an Ion resource that includes the token (robust auth)
+    // Build an Ion resource that includes the token (robust auth)
     const assetId = 4395595;  // e.g., 4395284
     Cesium.IonResource.fromAssetId(assetId, { accessToken: Cesium.Ion.defaultAccessToken })
       .then((resource) => {
-        console.log("Resolved tileset resource:", resource.url);
-
-        // Load the 3D Tiles from the resource (explicit)
+        // Load the 3D Tiles from the resource
         return Cesium.Cesium3DTileset.fromUrl(resource);
       })
       .then((tileset) => {
@@ -94,23 +93,19 @@
         tileset.style = new Cesium.Cesium3DTileStyle({
           pointSize: 2.0,            // smaller than default 5.0 (smooth look)
           pointOutlineWidth: 0.0     // outlines add noise; keep off for smoothness
-          // color: 'color("white")'  // optional: force neutral color if tiling produced odd colors
         });
-        // Style API / examples show pointSize on tileset style. cess-tokens/)[2](https://groups.google.com/g/cesium-dev/c/qB-xz1XooPo/m/qDYgsqVYAQAJ)[3](https://cesium.com/learn/ion/self-hosted/restApi.html)
 
         tileset.pointCloudShading = new Cesium.PointCloudShading({
           attenuation: true,           // distance-based sizing
-          geometricErrorScale: 1.0,    // adjust if points feel large; try 0.8–1.2
+          geometricErrorScale: 1.0,    // try 0.8–1.2 if points feel large/small
           maximumAttenuation: 3.0,     // cap size in pixels
           eyeDomeLighting: true,       // gentle edge contrast
           eyeDomeLightingStrength: 1.1,
           eyeDomeLightingRadius: 1.1
         });
-        // PointCloudShading parameters documented here. [4](https://github.com/reearth/resium/issues/637)
 
         return tileset.readyPromise.then(() => {
           viewer.flyTo(tileset, { duration: 1.8 });
-          console.log("Tileset ready:", tileset.asset);
         });
       })
       .catch((err) => {
@@ -121,6 +116,11 @@
           showError("Failed to load tileset. Open DevTools → Console/Network for details.");
         }
       });
+
+    // Optional: mild directional light
+    viewer.scene.light = new Cesium.DirectionalLight({
+      direction: new Cesium.Cartesian3(0.3, 0.5, -0.8)
+    });
   </script>
 </body>
 </html>
