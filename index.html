@@ -3,6 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <title>3Dulko Sandbox</title>
+  const tileset = viewer.scene.primitives.add(
+  await Cesium.Cesium3DTileset.fromIonAssetId(4395595),
+);
+
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- CesiumJS CSS -->
   https://unpkg.com/cesium/Build/Cesium/Widgets/widgets.css
@@ -102,4 +106,5 @@
   </script>
 </body>
 </html>
+
 
