@@ -2,54 +2,103 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>3Dulko Viewer</title>
+  <title>3Dulko Sanbox</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- CesiumJS CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/cesium/Build/Cesium/Widgets/widgets.css" />
+  https://unpkg.com/cesium/Build/Cesium/Widgets/widgets.css
   <style>
-    html, body, #cesiumContainer { width:100%; height:100%; margin:0; padding:0; background:#000; overflow:hidden; }
-    .info { position:absolute; top:10px; left:10px; z-index:10; background:rgba(0,0,0,.6); color:#fff; padding:6px 10px; border-radius:4px; font:13px system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    html, body, #cesiumContainer {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #000;
+    }
+    .info {
+      position: absolute;
+      top: 10px; left: 10px;
+      z-index: 1;
+      background: rgba(0,0,0,0.6);
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      font-size: 13px;
+    }
   </style>
 </head>
 <body>
   <div id="cesiumContainer"></div>
   <div class="info">Left-click: rotate • Right-click: tilt • Scroll: zoom</div>
 
-  <!-- Modern ES module script -->
-  <script type="module">
-    import * as Cesium from "https://unpkg.com/cesium/Build/Cesium/Cesium.js";
+  <!-- CesiumJS -->
+  https://unpkg.com/cesium/Build/Cesium/Cesium.js</script>
+  <script>
+    // 1) Add your Cesium ion Access Token
+    Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI5NDMzNGQwNy1jNDc4LTQ5OTktYWI2MS1kYmI2ZGQ0Nzg3NTQiLCJpZCI6MzczMzEyLCJpYXQiOjE3Njk2MjM1MjR9.CoDeijsMOZvm2pd3dUbeVR1Qy-9_iAET1whJqfQ3GBU";
 
-    // >>> Replace with your NEW domain-restricted Cesium ion token (scope: assets:read)
-    const ACCESS_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI5NDMzNGQwNy1jNDc4LTQ5OTktYWI2MS1kYmI2ZGQ0Nzg3NTQiLCJpZCI6MzczMzEyLCJpYXQiOjE3Njk2MjM1MjR9.CoDeijsMOZvm2pd3dUbeVR1Qy-9_iAET1whJqfQ3GBU";
-    const ASSET_ID = 4395595; // your tileset
-
-    // Optional default
-    Cesium.Ion.defaultAccessToken = ACCESS_TOKEN;
-
-    // Create the viewer
+    // 2) Create Viewer
     const viewer = new Cesium.Viewer("cesiumContainer", {
       terrain: Cesium.Terrain.fromWorldTerrain(),
-      imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
+      imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }), // Bing Aerial
       timeline: false,
       animation: false,
       baseLayerPicker: true,
-      sceneModePicker: true,
-      geocoder: false,
-      navigationHelpButton: false
+      geocoder: true,
+      navigationHelpButton: false,
+      homeButton: true,
+      sceneModePicker: true
     });
 
-    // Robust load: explicitly resolve ion resource with token, then load
-    const resource = await Cesium.IonResource.fromAssetId(ASSET_ID, { accessToken: ACCESS_TOKEN });
-    const tileset = await Cesium.Cesium3DTileset.fromUrl(resource);
-    viewer.scene.primitives.add(tileset);
-    await tileset.readyPromise;
-    viewer.flyTo(tileset, { duration: 2.0 });
+    // Nice rendering defaults
+    viewer.scene.globe.depthTestAgainstTerrain = true;
+    viewer.scene.highDynamicRange = true;
+    viewer.shadows = false;
 
-    // Optional lighting for photogrammetry
+    // 3) Load your 3D Tiles from Cesium ion
+    const tileset = viewer.scene.primitives.add(
+      new Cesium.Cesium3DTileset({
+        url: Cesium.IonResource.fromAssetId(4395595)
+      })
+    );
+
+    // 4) Style for smoother LAZ point clouds + shading
+    tileset.readyPromise.then(() => {
+      // --- A) Smaller points via 3D Tiles styling ---
+      // You can also use an expression, e.g., pointSize: '${Intensity} * 0.02'
+      tileset.style = new Cesium.Cesium3DTileStyle({
+        pointSize: 2.0,            // try 1.5–2.5 for smooth look
+        pointOutlineWidth: 0.0     // outlines can add noise; keep off for smoothness
+        // color: 'color("white")'  // optional: force neutral color if needed
+      }); // Style API: pointSize on Cesium3DTileStyle
+      // (docs: Cesium3DTileStyle + Sandcastle examples)
+      // https://cesium.com/learn/cesiumjs/ref-doc/Cesium3DTileStyle.html
+      // https://sandcastle.cesium.com/index.html?id=3d-tiles-point-cloud-styling
+
+      // --- B) Attenuation + gentle EDL (Eye-Dome Lighting) ---
+      tileset.pointCloudShading = new Cesium.PointCloudShading({
+        attenuation: true,          // distance-based point sizing
+        geometricErrorScale: 1.0,   // keep natural scaling (raise to 1.5 if points feel too big)
+        maximumAttenuation: 3.0,    // cap in pixels; 3 keeps things tidy
+        eyeDomeLighting: true,      // subtle depth contrast for smoothness
+        eyeDomeLightingStrength: 1.1, // gentle; 1.0–1.3 recommended
+        eyeDomeLightingRadius: 1.1    // small radius for crisp but not harsh edges
+      });
+      // PointCloudShading docs: attenuation & EDL parameters
+      // https://cesium.com/learn/cesiumjs/ref-doc/PointCloudShading.html
+
+      // Fly to your dataset
+      viewer.flyTo(tileset, { duration: 1.8 });
+    }).catch((error) => {
+      console.error("Tileset failed to load:", error);
+      alert("Error loading tileset. Check your Asset ID and token.");
+    });
+
+    // Optional: mild directional light; can be left at default for LAZ
     viewer.scene.light = new Cesium.DirectionalLight({
       direction: new Cesium.Cartesian3(0.3, 0.5, -0.8)
     });
   </script>
 </body>
 </html>
-
