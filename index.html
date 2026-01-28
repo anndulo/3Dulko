@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Cesium 3D Model Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- CesiumJS CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/cesium/Build/Cesium/Widgets/widgets.css">
+  <style>
+    html, body, #cesiumContainer {
+      width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: #000;
+    }
+    .info {
+      position: absolute; top: 10px; left: 10px; z-index: 10;
+      background: rgba(0,0,0,0.6); color: #fff; padding: 6px 10px; border-radius: 4px;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div id="cesiumContainer"></div>
+  <div class="info">Left-click: rotate • Right-click: tilt • Scroll: zoom</div>
+
+  <!-- CesiumJS -->
+  <script type="module">
+    import * as Cesium from "https://unpkg.com/cesium/Build/Cesium/Cesium.js";
+
+    // 1) Paste your NEW Cesium ion Access Token (not the leaked one)
+    Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyN2QwYzNkMy1jNWM5LTQ2ZWItODQ5Mi1iZmQ4YmRkNDRlNWQiLCJpZCI6MzczMzEyLCJpYXQiOjE3Njk2MjM1MTl9.cHkk7uvb2Na58GHnbdxdWnRkkoGikghWmJ2wulNwcoA";
+
+    // 2) Create the viewer
+    const viewer = new Cesium.Viewer("cesiumContainer", {
+      terrain: Cesium.Terrain.fromWorldTerrain(),
+      imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }), // Bing Aerial
+      timeline: false,
+      animation: false,
+      baseLayerPicker: true,
+      sceneModePicker: true,
+      geocoder: false,
+      navigationHelpButton: false
+    });
+
+    viewer.scene.globe.depthTestAgainstTerrain = true;
+    viewer.scene.highDynamicRange = true;
+
+    // 3) Load your Ion tileset via async API
+    const tileset = await Cesium.Cesium3DTileset.fromIonAssetId(4395284);
+    viewer.scene.primitives.add(tileset);
+
+    // 4) Fly to when ready
+    await tileset.readyPromise;
+    viewer.flyTo(tileset, { duration: 2.0 });
+
+    // Optional lighting tweak for photogrammetry
+    viewer.scene.light = new Cesium.DirectionalLight({
+      direction: new Cesium.Cartesian3(0.3, 0.5, -0.8)
+    });
+  </script>
+</body>
+</html>
