@@ -1,126 +1,18 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>Cesium 3D Model Viewer</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+import * as Cesium from "cesium";
 
-  <!-- ✅ CesiumJS CSS (proper <link> tag) -->
-  <link rel="stylesheet"
-        href="https://unpkg.com/cesium/Build/Cesium/Widgets/widgets.css" />
+const viewer = new Cesium.Viewer("cesiumContainer");
 
-  <style>
-    html, body, #cesiumContainer {
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      background: #000;
-    }
-    .info {
-      position: absolute;
-      top: 10px; left: 10px;
-      z-index: 1;
-      background: rgba(0,0,0,0.6);
-      color: #fff;
-      padding: 6px 10px;
-      border-radius: 4px;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      font-size: 13px;
-    }
-    #errorBox {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%,-50%);
-      background: #b00020;
-      color: #fff;
-      padding: 10px 14px;
-      border-radius: 6px;
-      font: 14px/1.3 system-ui;
-      display: none;
-      z-index: 2;
-    }
-  </style>
-</head>
-<body>
-  <div id="cesiumContainer"></div>
-  <div class="info">Left-click: rotate • Right-click: tilt • Scroll: zoom</div>
-  <div id="errorBox"></div>
-
-  <!-- ✅ CesiumJS (proper <script src> tag; global `Cesium`) -->
-  <script src="https://unpkg.com/cesium/Build/Cesium/Cesium.js"></script>
-
-  <script>
-    // 🔑 Paste your (new) Cesium ion Access Token
-    Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJiNWM1Y2Q0YS05NTgwLTQwMWEtYTkzMy1iNGEzMTZhYzNmYzkiLCJpZCI6MzczMzEyLCJpYXQiOjE3Njk2NDI4Mjh9.rfEw3GIHltGmwwxarmbdCX5QD4Q-OD1MlWXnSWUzEeI";
-
-    function showError(msg) {
-      const box = document.getElementById("errorBox");
-      box.textContent = msg;
-      box.style.display = "block";
-      console.error(msg);
-    }
-
-    // Create the viewer
-    const viewer = new Cesium.Viewer("cesiumContainer", {
-      terrain: Cesium.Terrain.fromWorldTerrain(),                        // ion
-      imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),    // Bing via ion
-      timeline: false,
-      animation: false,
-      baseLayerPicker: true,
-      geocoder: false,
-      navigationHelpButton: false,
-      homeButton: true,
-      sceneModePicker: true
-    });
-
-    viewer.scene.globe.depthTestAgainstTerrain = true;
-    viewer.scene.highDynamicRange = true;
-    viewer.shadows = false;
-
-    // Build an Ion resource that includes the token (robust auth)
-    const assetId = 4395595;  // e.g., 4395284
-    Cesium.IonResource.fromAssetId(assetId, { accessToken: Cesium.Ion.defaultAccessToken })
-      .then((resource) => {
-        // Load the 3D Tiles from the resource
-        return Cesium.Cesium3DTileset.fromUrl(resource);
-      })
-      .then((tileset) => {
-        viewer.scene.primitives.add(tileset);
-
-        // 🟢 Apply point cloud styling (smaller points) + smooth shading
-        tileset.style = new Cesium.Cesium3DTileStyle({
-          pointSize: 2.0,            // smaller than default 5.0 (smooth look)
-          pointOutlineWidth: 0.0     // outlines add noise; keep off for smoothness
-        });
-
-        tileset.pointCloudShading = new Cesium.PointCloudShading({
-          attenuation: true,           // distance-based sizing
-          geometricErrorScale: 1.0,    // try 0.8–1.2 if points feel large/small
-          maximumAttenuation: 3.0,     // cap size in pixels
-          eyeDomeLighting: true,       // gentle edge contrast
-          eyeDomeLightingStrength: 1.1,
-          eyeDomeLightingRadius: 1.1
-        });
-
-        return tileset.readyPromise.then(() => {
-          viewer.flyTo(tileset, { duration: 1.8 });
-        });
-      })
-      .catch((err) => {
-        console.error("Tileset load failed:", err);
-        if (err && err.message && /Unauthorized|Forbidden|Token|domain/i.test(err.message)) {
-          showError("Authorization error: check token scope/allowed domain.");
-        } else {
-          showError("Failed to load tileset. Open DevTools → Console/Network for details.");
-        }
-      });
-
-    // Optional: mild directional light
-    viewer.scene.light = new Cesium.DirectionalLight({
-      direction: new Cesium.Cartesian3(0.3, 0.5, -0.8)
-    });
-  </script>
-</body>
-</html>
+try {
+  const tileset = await Cesium.Cesium3DTileset.fromIonAssetId(4395595);
+  viewer.scene.primitives.add(tileset);
+  viewer.zoomTo(
+    tileset,
+    new Cesium.HeadingPitchRange(
+      Cesium.Math.toRadians(0.0),
+      Cesium.Math.toRadians(-15.0),
+      200.0,
+    ),
+  );
+} catch (error) {
+  console.log(`Error loading tileset: ${error}`);
+}
