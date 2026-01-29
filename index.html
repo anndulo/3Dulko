@@ -1,21 +1,70 @@
-// Grant CesiumJS access to your ion assets
-Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI5NDMzNGQwNy1jNDc4LTQ5OTktYWI2MS1kYmI2ZGQ0Nzg3NTQiLCJpZCI6MzczMzEyLCJpYXQiOjE3Njk2MjM1MjR9.CoDeijsMOZvm2pd3dUbeVR1Qy-9_iAET1whJqfQ3GBU";
-const viewer = new Cesium.Viewer("cesiumContainer");
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Cesium 3D Model Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-try {
-  const tileset = await Cesium.Cesium3DTileset.fromIonAssetId(4395595);
-  viewer.scene.primitives.add(tileset);
-  await viewer.zoomTo(tileset);
+  <!-- CesiumJS CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/cesium/Build/Cesium/Widgets/widgets.css" />
+  <style>
+    html, body, #cesiumContainer { width:100%; height:100%; margin:0; padding:0; background:#000; overflow:hidden; }
+    .info { position:absolute; top:10px; left:10px; z-index:10; background:rgba(0,0,0,.6); color:#fff; padding:6px 10px; border-radius:4px; font:13px system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+    #errorBox { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:#b00020; color:#fff; padding:10px 14px; border-radius:6px; font:14px/1.3 system-ui; display:none; z-index:20; }
+  </style>
+</head>
+<body>
+  <div id="cesiumContainer"></div>
+  <div class="info">Left-click: rotate • Right-click: tilt • Scroll: zoom</div>
+  <div id="errorBox"></div>
 
-  // Apply the default style if it exists
-  const extras = tileset.asset.extras;
-  if (
-    Cesium.defined(extras) &&
-    Cesium.defined(extras.ion) &&
-    Cesium.defined(extras.ion.defaultStyle)
-  ) {
-    tileset.style = new Cesium.Cesium3DTileStyle(extras.ion.defaultStyle);
-  }
-} catch (error) {
-  console.log(error);
-}
+  <!-- CesiumJS (ESM build works fine with type="module") -->
+  <script type="module">
+    import * as Cesium from "https://unpkg.com/cesium/Build/Cesium/Cesium.js";
+
+    // --- REQUIRED: put your NEW, domain-restricted token here ---
+    Cesium.Ion.defaultAccessToken = "YOUR_NEW_TOKEN_HERE";
+
+    const viewer = new Cesium.Viewer("cesiumContainer", {
+      terrain: Cesium.Terrain.fromWorldTerrain(),
+      imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
+      timeline: false, animation: false, baseLayerPicker: true, geocoder: false, navigationHelpButton: false, sceneModePicker: true
+    });
+    viewer.scene.globe.depthTestAgainstTerrain = true;
+    viewer.scene.highDynamicRange = true;
+
+    const errorBox = document.getElementById("errorBox");
+    const showError = (m) => { errorBox.textContent = m; errorBox.style.display = "block"; console.error(m); };
+
+    try {
+      // === Your requested pattern from Cesium docs ===
+      const tileset = await Cesium.Cesium3DTileset.fromIonAssetId(4395595); // <-- your Asset ID
+      viewer.scene.primitives.add(tileset);
+      await viewer.zoomTo(tileset);
+
+      // Apply default ion style if present
+      const extras = tileset.asset?.extras;
+      if (extras?.ion?.defaultStyle) {
+        tileset.style = new Cesium.Cesium3DTileStyle(extras.ion.defaultStyle);
+      }
+
+      // --- Make LAZ points smoother/smaller (optional) ---
+      // If your asset is a point cloud, this will refine appearance.
+      tileset.style = new Cesium.Cesium3DTileStyle({
+        pointSize: 2.0,          // default is ~5; 1.6–2.5 is common for smooth look
+        pointOutlineWidth: 0.0
+      });
+      tileset.pointCloudShading = new Cesium.PointCloudShading({
+        attenuation: true,
+        maximumAttenuation: 3.0,
+        eyeDomeLighting: true,
+        eyeDomeLightingStrength: 1.1,
+        eyeDomeLightingRadius: 1.1
+      });
+    } catch (err) {
+      console.error(err);
+      showError("Failed to load tileset. Check token domain restrictions, asset ID, and Network tab.");
+    }
+  </script>
+</body>
+</html>
