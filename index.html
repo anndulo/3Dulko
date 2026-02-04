@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3Dulko</title>
+    <link href="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Cormorant+Garamond:wght@300;400;600&display=swap');
+        
+        :root {
+            --bg-primary: #0a0e14;
+            --bg-secondary: #151922;
+            --bg-tertiary: #1f2430;
+            --accent-primary: #00d4aa;
+            --accent-secondary: #00a896;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-tertiary: #6e7681;
+            --border: #30363d;
+            --shadow: rgba(0, 0, 0, 0.4);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        #viewport {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        .cesium-viewer-bottom {
+            display: none !important;
+        }
+        
+        .ui-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 2rem 3rem;
+            background: linear-gradient(180deg, rgba(10, 14, 20, 0.95) 0%, transparent 100%);
+            pointer-events: auto;
+        }
+        
+        .title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2.5rem;
+            font-weight: 300;
+            letter-spacing: 0.05em;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+        }
+        
+        .toolbar {
+            position: absolute;
+            top: 50%;
+            right: 3rem;
+            transform: translateY(-50%);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            min-width: 280px;
+            pointer-events: auto;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px var(--shadow);
+        }
+        
+        .toolbar-section {
+            margin-bottom: 1.5rem;
+        }
+        
+        .toolbar-section:last-child {
+            margin-bottom: 0;
+        }
+        
+        .section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--accent-primary);
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .tool-button {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .tool-button:hover {
+            background: var(--accent-secondary);
+            border-color: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+        
+        .tool-button.active {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-color: var(--accent-primary);
+            color: var(--bg-primary);
+            font-weight: 600;
+        }
+        
+        .tool-button:last-child {
+            margin-bottom: 0;
+        }
+        
+        .input-label {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.4rem;
+        }
+        
+        .measurement-result {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.75rem;
+            margin-top: 0.75rem;
+            font-size: 0.85rem;
+        }
+        
+        .measurement-value {
+            color: var(--accent-primary);
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        
+        .controls-hint {
+            position: absolute;
+            bottom: 3rem;
+            right: 3rem;
+            padding: 1rem 1.5rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            pointer-events: auto;
+        }
+        
+        .controls-hint kbd {
+            display: inline-block;
+            padding: 0.2rem 0.4rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--accent-primary);
+            margin: 0 0.2rem;
+        }
+        
+        .note {
+            font-size: 0.7rem;
+            color: var(--text-tertiary);
+            margin-top: 0.5rem;
+            font-style: italic;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 14, 20, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        .loading-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .loader {
+            width: 60px;
+            height: 60px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+        
+        .loading-text {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="viewport"></div>
+    
+    <div class="ui-overlay">
+        <div class="header">
+            <h1 class="title">3Dulko</h1>
+            <p class="subtitle">Spatial Data Viewer</p>
+        </div>
+        
+        <!-- Tools Panel -->
+        <div class="toolbar">
+            <div class="toolbar-section">
+                <div class="section-title">Tools</div>
+                <button class="tool-button" id="measureDistanceBtn">
+                    <span>📏 Measure Distance</span>
+                </button>
+                <button class="tool-button" id="measureAreaBtn">
+                    <span>📐 Measure Area</span>
+                </button>
+                <button class="tool-button" id="screenshotBtn">
+                    <span>📷 Take Screenshot</span>
+                </button>
+                <button class="tool-button" id="resetViewBtn">
+                    <span>🏠 Reset View</span>
+                </button>
+            </div>
+            
+            <div class="toolbar-section" id="measurementSection" style="display: none;">
+                <div class="section-title">Measurement</div>
+                <div id="measurementInstructions" class="note">
+                    Click on the globe to place measurement points
+                </div>
+                <div id="measurementResult" class="measurement-result" style="display: none;">
+                    <div class="input-label">Result:</div>
+                    <div class="measurement-value" id="measurementValue">—</div>
+                </div>
+                <button class="tool-button" id="clearMeasurementBtn">
+                    <span>🗑️ Clear Measurement</span>
+                </button>
+            </div>
+        </div>
+        
+        <div class="controls-hint">
+            <kbd>Left Drag</kbd> Rotate • <kbd>Right Drag</kbd> Pan • <kbd>Scroll</kbd> Zoom
+        </div>
+    </div>
+    
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loader"></div>
+        <div class="loading-text">Loading asset...</div>
+    </div>
+
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Cesium.js"></script>
+    
+    <script>
+        // Configure Cesium for workers
+        window.CESIUM_BASE_URL = 'https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/';
+        
+        // ========================================
+        // CONFIGURATION - UPDATE THESE VALUES
+        // ========================================
+        
+        // Your Cesium Ion Access Token
+        const CESIUM_ION_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJlNjM3M2U2ZC1iNDcxLTQxMTItYTZhZC1mZDA5NzgwNGJlM2UiLCJpZCI6MzczMzEyLCJpYXQiOjE3NzAwODk2OTN9.TSgaOJEkgTZ9csJbJ8BuwTkvEazDGM_fhfu1Q1473n4';
+        
+        // Your Asset ID from Cesium Ion
+        const ASSET_ID = 4395595; // Replace with your asset ID
+        
+        // Asset position (latitude, longitude, altitude in meters)
+        const ASSET_POSITION = {
+            lat: 56.1207,
+            lon: -121.7333,
+            alt: 448
+        };
+        
+        // ========================================
+        // END CONFIGURATION
+        // ========================================
+        
+        Cesium.Ion.defaultAccessToken = CESIUM_ION_TOKEN;
+        
+
+        
+        // Initialize Cesium Viewer
+        const viewer = new Cesium.Viewer('viewport', {
+            animation: false,
+            timeline: false,
+            baseLayerPicker: false,
+            geocoder: false,
+            homeButton: false,
+            sceneModePicker: false,
+            navigationHelpButton: false,
+            infoBox: false,
+            selectionIndicator: false
+        });
+        
+        console.log('Viewer created:', viewer);
+        console.log('Viewer canvas:', viewer.canvas);
+        viewer.scene.requestRender();
+        
+        viewer.scene.globe.depthTestAgainstTerrain = false;
+        
+        // State
+        let currentTileset = null;
+        let measurementMode = null;
+        let measurementPoints = [];
+        let measurementEntities = [];
+        
+        // UI Elements
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const measureDistanceBtn = document.getElementById('measureDistanceBtn');
+        const measureAreaBtn = document.getElementById('measureAreaBtn');
+        const screenshotBtn = document.getElementById('screenshotBtn');
+        const resetViewBtn = document.getElementById('resetViewBtn');
+        const clearMeasurementBtn = document.getElementById('clearMeasurementBtn');
+        const measurementSection = document.getElementById('measurementSection');
+        const measurementResult = document.getElementById('measurementResult');
+        const measurementValue = document.getElementById('measurementValue');
+        
+        // Load asset on startup
+        async function loadAsset() {
+            loadingOverlay.classList.add('active');
+            
+            try {
+                console.log('Starting asset load...');
+                console.log('Loading tileset from Ion...');
+                const options = {
+                    maximumScreenSpaceError: 6
+            
+                };
+                
+                currentTileset = await Cesium.Cesium3DTileset.fromIonAssetId(ASSET_ID, options);
+                console.log('Tileset loaded, adding to scene...');
+                
+                viewer.scene.primitives.add(currentTileset);
+                console.log('Tileset added to scene');
+                // Increase default point size for point cloud tilesets
+                try {
+                    currentTileset.style = new Cesium.Cesium3DTileStyle({
+                        pointSize: '3.0'
+                    });
+                    console.log('Tileset pointSize set to 5.0');
+                } catch (e) {
+                    console.warn('Unable to set tileset pointSize:', e);
+                }
+                
+                // Fly to asset position
+                viewer.camera.flyTo({
+                    destination: Cesium.Cartesian3.fromDegrees(
+                        ASSET_POSITION.lon,
+                        ASSET_POSITION.lat,
+                        ASSET_POSITION.alt + 1000
+                    ),
+                    duration: 3.0
+                });
+                
+                console.log('Asset loaded successfully!');
+                
+            } catch (error) {
+                console.error('Error:', error.message);
+                alert('Error: ' + error.message);
+            } finally {
+                loadingOverlay.classList.remove('active');
+            }
+        }
+        
+        // Load asset when page loads
+        loadAsset();
+        
+        // Clear measurements
+        function clearMeasurements() {
+            measurementPoints = [];
+            measurementEntities.forEach(entity => viewer.entities.remove(entity));
+            measurementEntities = [];
+            measurementResult.style.display = 'none';
+            measurementValue.textContent = '—';
+        }
+        
+        // Measure distance
+        measureDistanceBtn.addEventListener('click', () => {
+            clearMeasurements();
+            measurementMode = 'distance';
+            measurementSection.style.display = 'block';
+            measureDistanceBtn.classList.add('active');
+            measureAreaBtn.classList.remove('active');
+            document.getElementById('measurementInstructions').textContent = 
+                'Click two points on the globe to measure distance';
+        });
+        
+        // Measure area
+        measureAreaBtn.addEventListener('click', () => {
+            clearMeasurements();
+            measurementMode = 'area';
+            measurementSection.style.display = 'block';
+            measureAreaBtn.classList.add('active');
+            measureDistanceBtn.classList.remove('active');
+            document.getElementById('measurementInstructions').textContent = 
+                'Click points on the globe to create a polygon (double-click to finish)';
+        });
+        
+        // Clear measurement button
+        clearMeasurementBtn.addEventListener('click', () => {
+            clearMeasurements();
+            measurementMode = null;
+            measurementSection.style.display = 'none';
+            measureDistanceBtn.classList.remove('active');
+            measureAreaBtn.classList.remove('active');
+        });
+        
+        // Handle clicks for measurements
+        const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+        
+        handler.setInputAction((click) => {
+            if (!measurementMode) return;
+            
+            const ray = viewer.camera.getPickRay(click.position);
+            const position = viewer.scene.globe.pick(ray, viewer.scene);
+            
+            if (!position) return;
+            
+            measurementPoints.push(position);
+            
+            // Add point marker
+            const entity = viewer.entities.add({
+                position: position,
+                point: {
+                    pixelSize: 10,
+                    color: Cesium.Color.fromCssColorString('#00d4aa'),
+                    outlineColor: Cesium.Color.WHITE,
+                    outlineWidth: 2
+                }
+            });
+            measurementEntities.push(entity);
+            
+            // Calculate and display result for distance
+            if (measurementMode === 'distance' && measurementPoints.length === 2) {
+                const distance = Cesium.Cartesian3.distance(measurementPoints[0], measurementPoints[1]);
+                
+                // Add line
+                const lineEntity = viewer.entities.add({
+                    polyline: {
+                        positions: measurementPoints,
+                        width: 3,
+                        material: Cesium.Color.fromCssColorString('#00d4aa')
+                    }
+                });
+                measurementEntities.push(lineEntity);
+                
+                measurementResult.style.display = 'block';
+                measurementValue.textContent = distance > 1000 ? 
+                    `${(distance / 1000).toFixed(2)} km` : 
+                    `${distance.toFixed(2)} m`;
+                
+                measurementMode = null;
+                measureDistanceBtn.classList.remove('active');
+            }
+            
+            // Draw polygon for area measurement
+            if (measurementMode === 'area' && measurementPoints.length > 0) {
+                if (measurementPoints.length > 1) {
+                    const lastPolyline = measurementEntities.find(e => e.polyline && !e.polygon);
+                    if (lastPolyline) {
+                        viewer.entities.remove(lastPolyline);
+                        measurementEntities = measurementEntities.filter(e => e !== lastPolyline);
+                    }
+                    
+                    const polylineEntity = viewer.entities.add({
+                        polyline: {
+                            positions: [...measurementPoints, measurementPoints[0]],
+                            width: 3,
+                            material: Cesium.Color.fromCssColorString('#00d4aa')
+                        }
+                    });
+                    measurementEntities.push(polylineEntity);
+                }
+            }
+        }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+        
+        handler.setInputAction((click) => {
+            if (measurementMode === 'area' && measurementPoints.length >= 3) {
+                // Calculate area using polygon
+                const cartographicPoints = measurementPoints.map(p => 
+                    Cesium.Cartographic.fromCartesian(p)
+                );
+                
+                // Simple area calculation (approximate)
+                let area = 0;
+                for (let i = 0; i < cartographicPoints.length; i++) {
+                    const j = (i + 1) % cartographicPoints.length;
+                    area += cartographicPoints[i].longitude * cartographicPoints[j].latitude;
+                    area -= cartographicPoints[j].longitude * cartographicPoints[i].latitude;
+                }
+                area = Math.abs(area / 2.0);
+                
+                // Convert to square meters (approximate)
+                const earthRadius = 6371000;
+                const areaMeters = area * earthRadius * earthRadius;
+                
+                measurementResult.style.display = 'block';
+                measurementValue.textContent = areaMeters > 1000000 ? 
+                    `${(areaMeters / 1000000).toFixed(2)} km²` : 
+                    `${areaMeters.toFixed(2)} m²`;
+                
+                measurementMode = null;
+                measureAreaBtn.classList.remove('active');
+            }
+        }, Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
+        
+        // Screenshot
+        screenshotBtn.addEventListener('click', () => {
+            viewer.render();
+            const canvas = viewer.scene.canvas;
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `3dulko_screenshot_${Date.now()}.png`;
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+        });
+        
+        // Reset view
+        resetViewBtn.addEventListener('click', () => {
+            console.log('Reset view button clicked');
+            try {
+                viewer.camera.flyTo({
+                    destination: Cesium.Cartesian3.fromDegrees(
+                        ASSET_POSITION.lon,
+                        ASSET_POSITION.lat,
+                        ASSET_POSITION.alt + 1000
+                    ),
+                    duration: 2.0
+                });
+                console.log('Flying to asset position');
+            } catch (error) {
+                console.error('Error in reset view:', error);
+            }
+        });
+    </script>
+</body>
+</html>
